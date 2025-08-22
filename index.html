@@ -122,6 +122,396 @@
             display: none;
         }
         .preview-box {
+            background-color: #fff; /* Always white */
+            color: #000; /* Always black */
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            border: 1px dashed var(--input-border);
+            text-align: center;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            word-wrap: break-word;
+            transition: background-color 0.3s, color 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="generator-container">
+        <h1>Roblox Rich Text Generator</h1>
+        
+        <label for="inputText1">Enter your first text part:</label>
+        <textarea id="inputText1" rows="2" placeholder="Your text here"></textarea>
+        <label for="colorPicker1">Font Color 1:</label>
+        <input type="color" id="colorPicker1" value="#ff0000">
+
+        <label for="inputText2">Enter your second text part:</label>
+        <textarea id="inputText2" rows="2" placeholder="Your text here"></textarea>
+        <label for="colorPicker2">Font Color 2:</label>
+        <input type="color" id="colorPicker2" value="#00ff00">
+
+        <div class="options-container">
+            <div class="option-group">
+                <label><input type="checkbox" id="boldCheck"> <b>Bold</b></label>
+                <label><input type="checkbox" id="italicCheck"> <i>Italic</i></label>
+                <label><input type="checkbox" id="underlineCheck"> <u>Underline</u></label>
+                <label><input type="checkbox" id="strikethroughCheck"> <s>Strikethrough</s></label>
+            </div>
+            <div class="option-group">
+                <label><input type="checkbox" id="rainbowCheck"> Rainbow (Overrides Multicolor)</label>
+            </div>
+            <div class="option-group">
+                <label for="sizeInput">Font Size:</label>
+                <input type="number" id="sizeInput" min="1" max="100" placeholder="e.g., 24">
+            </div>
+            <div class="option-group">
+                <label for="fontSelect">Font Style:</label>
+                <select id="fontSelect">
+                    <option value="">Default</option>
+                    <option value="SourceSansPro">SourceSansPro</option>
+                    <option value="SourceSansProLight">SourceSansProLight</option>
+                    <option value="SourceSansProBold">SourceSansProBold</option>
+                    <option value="Garamond">Garamond</option>
+                    <option value="Arial">Arial</option>
+                </select>
+                <label for="fontWeightSelect">Font Weight:</label>
+                <select id="fontWeightSelect">
+                    <option value="">Default</option>
+                    <option value="300">Light</option>
+                    <option value="400">Regular</option>
+                    <option value="600">SemiBold</option>
+                    <option value="700">Bold</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label>Stroke:</label>
+                <label><input type="checkbox" id="strokeCheck"> Enable Stroke</label>
+                <label for="strokeColor">Color:</label>
+                <input type="color" id="strokeColor" value="#000000">
+                <label for="strokeThickness">Thickness:</label>
+                <input type="number" id="strokeThickness" min="0" max="10" placeholder="e.g., 1">
+            </div>
+            <div class="option-group">
+                <label for="transparencyInput">Transparency:</label>
+                <input type="number" id="transparencyInput" step="0.01" min="0" max="1" placeholder="e.g., 0.5">
+            </div>
+        </div>
+
+        <label for="previewDisplay">Preview:</label>
+        <div id="previewDisplay" class="preview-box"></div>
+
+        <label for="outputText">Rich Text Code:</label>
+        <textarea id="outputText" rows="4" readonly></textarea>
+        
+        <button class="copy-button" id="copyButton">Copy to Clipboard</button>
+        <div class="copied-message" id="copiedMessage">Copied!</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputText1 = document.getElementById('inputText1');
+            const colorPicker1 = document.getElementById('colorPicker1');
+            const inputText2 = document.getElementById('inputText2');
+            const colorPicker2 = document.getElementById('colorPicker2');
+            const outputText = document.getElementById('outputText');
+            const previewDisplay = document.getElementById('previewDisplay');
+            const boldCheck = document.getElementById('boldCheck');
+            const italicCheck = document.getElementById('italicCheck');
+            const underlineCheck = document.getElementById('underlineCheck');
+            const strikethroughCheck = document.getElementById('strikethroughCheck');
+            const rainbowCheck = document.getElementById('rainbowCheck');
+            const sizeInput = document.getElementById('sizeInput');
+            const fontSelect = document.getElementById('fontSelect');
+            const fontWeightSelect = document.getElementById('fontWeightSelect');
+            const strokeCheck = document.getElementById('strokeCheck');
+            const strokeColor = document.getElementById('strokeColor');
+            const strokeThickness = document.getElementById('strokeThickness');
+            const transparencyInput = document.getElementById('transparencyInput');
+            const copyButton = document.getElementById('copyButton');
+            const copiedMessage = document.getElementById('copiedMessage');
+            
+            function hexToRgb(hex) {
+                hex = hex.replace(/^#/, '');
+                const bigint = parseInt(hex, 16);
+                const r = (bigint >> 16) & 255;
+                const g = (bigint >> 8) & 255;
+                const b = bigint & 255;
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+
+            function getRainbowColor(index, total) {
+                const hue = (index / total) * 360;
+                return `hsl(${hue}, 100%, 50%)`;
+            }
+
+            function generateRichText() {
+                let text1 = inputText1.value;
+                let text2 = inputText2.value;
+                let finalFormattedText = '';
+                
+                // Handle rainbow text logic first, which overrides multicolor
+                if (rainbowCheck.checked) {
+                    let fullText = text1 + text2;
+                    if (fullText.trim() === '') {
+                        outputText.value = '';
+                        previewDisplay.innerHTML = '';
+                        return;
+                    }
+                    for (let i = 0; i < fullText.length; i++) {
+                        const char = fullText[i];
+                        const rainbowColor = getRainbowColor(i, fullText.length);
+                        finalFormattedText += `<font color="${rainbowColor}">${char}</font>`;
+                    }
+                } else {
+                    if (text1.trim() !== '') {
+                        const hexColor1 = colorPicker1.value.trim();
+                        const rgbColor1 = hexToRgb(hexColor1);
+                        finalFormattedText += `<font color="${rgbColor1}">${text1}</font>`;
+                    }
+                    if (text2.trim() !== '') {
+                        const hexColor2 = colorPicker2.value.trim();
+                        const rgbColor2 = hexToRgb(hexColor2);
+                        finalFormattedText += `<font color="${rgbColor2}">${text2}</font>`;
+                    }
+                }
+
+                if (finalFormattedText.trim() === '') {
+                    outputText.value = '';
+                    previewDisplay.innerHTML = '';
+                    return;
+                }
+                
+                const selectedFont = fontSelect.value;
+                if (selectedFont !== '') {
+                    finalFormattedText = `<font face="${selectedFont}">${finalFormattedText}</font>`;
+                }
+                const selectedFontWeight = fontWeightSelect.value;
+                if (selectedFontWeight !== '') {
+                    finalFormattedText = `<font weight="${selectedFontWeight}">${finalFormattedText}</font>`;
+                }
+
+                if (sizeInput.value.trim() !== '') {
+                    const size = sizeInput.value.trim();
+                    finalFormattedText = `<font size="${size}">${finalFormattedText}</font>`;
+                }
+
+                const transparencyValue = transparencyInput.value.trim();
+                if (transparencyValue !== '' && !isNaN(transparencyValue)) {
+                    const robloxTransparency = 1 - parseFloat(transparencyValue);
+                    finalFormattedText = `<font transparency="${robloxTransparency}">${finalFormattedText}</font>`;
+                }
+                
+                if (strokeCheck.checked) {
+                    const strokeColorValue = strokeColor.value;
+                    const strokeThicknessValue = strokeThickness.value.trim();
+                    if (strokeColorValue !== '' && strokeThicknessValue !== '') {
+                        finalFormattedText = `<stroke color="${hexToRgb(strokeColorValue)}" thickness="${strokeThicknessValue}">${finalFormattedText}</stroke>`;
+                    }
+                }
+
+                if (boldCheck.checked) {
+                    finalFormattedText = `<b>${finalFormattedText}</b>`;
+                }
+                if (italicCheck.checked) {
+                    finalFormattedText = `<i>${finalFormattedText}</i>`;
+                }
+                if (underlineCheck.checked) {
+                    finalFormattedText = `<u>${finalFormattedText}</u>`;
+                }
+                if (strikethroughCheck.checked) {
+                    finalFormattedText = `<s>${finalFormattedText}</s>`;
+                }
+
+                outputText.value = finalFormattedText;
+                
+                // Update the preview display
+                let previewText1 = inputText1.value;
+                let previewText2 = inputText2.value;
+                let finalPreviewText = '';
+
+                if (rainbowCheck.checked) {
+                    let fullText = previewText1 + previewText2;
+                    for (let i = 0; i < fullText.length; i++) {
+                        const char = fullText[i];
+                        const rainbowColor = getRainbowColor(i, fullText.length);
+                        finalPreviewText += `<span style="color:${rainbowColor};">${char}</span>`;
+                    }
+                } else {
+                    if (previewText1.trim() !== '') {
+                        const hexColor1Preview = colorPicker1.value.trim();
+                        const rgbColor1Preview = hexToRgb(hexColor1Preview);
+                        finalPreviewText += `<span style="color:${rgbColor1Preview};">${previewText1}</span>`;
+                    }
+                    if (previewText2.trim() !== '') {
+                        const hexColor2Preview = colorPicker2.value.trim();
+                        const rgbColor2Preview = hexToRgb(hexColor2Preview);
+                        finalPreviewText += `<span style="color:${rgbColor2Preview};">${previewText2}</span>`;
+                    }
+                }
+                
+                const selectedFontPreview = fontSelect.value;
+                if (selectedFontPreview !== '') {
+                    finalPreviewText = `<span style="font-family:'${selectedFontPreview}';">${finalPreviewText}</span>`;
+                }
+                const selectedFontWeightPreview = fontWeightSelect.value;
+                if (selectedFontWeightPreview !== '') {
+                    finalPreviewText = `<span style="font-weight:${selectedFontWeightPreview};">${finalPreviewText}</span>`;
+                }
+                if (sizeInput.value.trim() !== '') {
+                    const size = sizeInput.value.trim();
+                    finalPreviewText = `<span style="font-size:${size}px;">${finalPreviewText}</span>`;
+                }
+                
+                const transparencyValuePreview = transparencyInput.value.trim();
+                if (transparencyValuePreview !== '' && !isNaN(transparencyValuePreview)) {
+                    finalPreviewText = `<span style="opacity:${transparencyValuePreview};">${finalPreviewText}</span>`;
+                }
+                
+                if (strokeCheck.checked) {
+                    const strokeColorValuePreview = strokeColor.value;
+                    const strokeThicknessValuePreview = strokeThickness.value.trim();
+                    if (strokeColorValuePreview !== '' && strokeThicknessValuePreview !== '') {
+                        finalPreviewText = `<span style="text-shadow: 0 0 ${strokeThicknessValuePreview}px ${strokeColorValuePreview};">${finalPreviewText}</span>`;
+                    }
+                }
+                if (boldCheck.checked) {
+                    finalPreviewText = `<b>${finalPreviewText}</b>`;
+                }
+                if (italicCheck.checked) {
+                    finalPreviewText = `<i>${finalPreviewText}</i>`;
+                }
+                if (underlineCheck.checked) {
+                    finalPreviewText = `<u>${finalPreviewText}</u>`;
+                }
+                if (strikethroughCheck.checked) {
+                    finalPreviewText = `<s>${finalPreviewText}</s>`;
+                }
+                
+                previewDisplay.innerHTML = finalPreviewText;
+            }
+
+            const allInputs = document.querySelectorAll('input, select, textarea');
+            allInputs.forEach(input => {
+                input.addEventListener('input', generateRichText);
+                input.addEventListener('change', generateRichText);
+            });
+            
+            // Special handling for rainbow check
+            rainbowCheck.addEventListener('change', () => {
+                colorPicker1.disabled = rainbowCheck.checked;
+                colorPicker2.disabled = rainbowCheck.checked;
+                generateRichText();
+            });
+
+            // Copy to clipboard functionality
+            copyButton.addEventListener('click', () => {
+                outputText.select();
+                outputText.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+                copiedMessage.style.display = 'block';
+                setTimeout(() => {
+                    copiedMessage.style.display = 'none';
+                }, 2000);
+            });
+
+            generateRichText();
+        });
+    </script>
+
+</body>
+</html>
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 650px;
+            transition: background-color 0.3s;
+        }
+        h1 {
+            text-align: center;
+            color: var(--text-color);
+            margin-bottom: 25px;
+            font-size: 2.2em;
+            font-weight: 600;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        textarea, select, input[type="number"], input[type="text"], input[type="color"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1em;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+        input[type="color"] {
+            padding: 2px;
+            height: 40px;
+            cursor: pointer;
+        }
+        .options-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .option-group {
+            background-color: var(--input-bg);
+            padding: 15px;
+            border-radius: 8px;
+            flex: 1 1 200px;
+            transition: background-color 0.3s;
+        }
+        .option-group label {
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .option-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        .copy-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .copy-button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        .copy-button:active {
+            transform: translateY(0);
+        }
+        .copied-message {
+            text-align: center;
+            margin-top: 15px;
+            color: #28a745;
+            font-weight: bold;
+            display: none;
+        }
+        .preview-box {
             background-color: #f0f2f5;
             color: #333;
             padding: 15px;
